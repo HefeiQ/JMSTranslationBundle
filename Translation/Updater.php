@@ -170,43 +170,44 @@ class Updater
             $outputFile = $this->config->getTranslationsDir().'/'.$name.'.'.$this->config->getLocale().'.'.$format;
 
 
+        // This will first detects if there already has a translation file.
+	    // If yes, then check if there are changes in the file.
+        // If there are no changes, will not make any change in the file.
+        // If there are changes, will update the file with new timestamp.	 
+        $files = glob($config->getTranslationsDir() . "/*." . $format);
+        $reRwite = true;
 
-    // Detect is there already has a translation file, then check if there have changes of translation file, if so, update, else, don't make any change
-
-  $files = glob($config->getTranslationsDir() . "/*." . $format);
-  $reRwite = true;
-
-  if ($files[0]==$outputFile) {
-    $dom = new \DOMDocument('1.0', 'utf-8');
-    $dom->load($files[0]);
-    $xml = simplexml_import_dom($dom);
-    $json = json_encode($xml);
-    $array = json_decode($json,TRUE);
+        if ($files[0]==$outputFile) {
+            $dom = new \DOMDocument('1.0', 'utf-8');
+            $dom->load($files[0]);
+            $xml = simplexml_import_dom($dom);
+            $json = json_encode($xml);
+            $content = json_decode($json,TRUE);
   
-  foreach ($array["file"]["body"]["trans-unit"] as $key) {
-    $arr1[] = array($key["source"],$key["target"]);
-    }
-  }
+            foreach ($content['file']['body']['trans-unit'] as $key) {
+                $trans_content[] = array($key['source'],$key['target']);
+            }
+        }
 
-
-foreach ($this->scannedCatalogue->getDomains() as $domainCatalogue) {
+        foreach ($this->scannedCatalogue->getDomains() as $domainCatalogue) {
             foreach ($domainCatalogue->all() as $message) {
-
                 if (!$this->existingCatalogue->has($message)) {
                     continue;
                 }
 
                 $existingMessage = clone $this->existingCatalogue->get($message->getId(), $message->getDomain());
-                $arr2[]=array($existingMessage->getId(),$existingMessage->getlocaleString());
-
+                $file_content[]=array($existingMessage->getId(),$existingMessage->getlocaleString());
             }
         }
-        if ($arr1 == $arr2) 
-           $reRwite = false;
-
-            $this->logger->info(sprintf('Writing translation file "%s".', $outputFile));
-            if($reRwite)
-            $this->writer->write($this->scannedCatalogue, $name, $outputFile, $format);
+		
+            if ($trans_content == $file_content) {
+               $reRwite = false;
+            }
+        
+		    $this->logger->info(sprintf('Writing translation file "%s".', $outputFile));
+            if($reRwite){
+                $this->writer->write($this->scannedCatalogue, $name, $outputFile, $format);
+		    }
         }
     }
 
